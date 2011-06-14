@@ -28,11 +28,8 @@ public class OtpProcessManager {
         this.otpNode = otpNode;
         processTable = new ConcurrentHashMap<OtpErlangPid, OtpProcess>();
         rpcCache = new ConcurrentHashMap<String, OtpRPC>();
-        //otpProcessExecutor = Executors.newCachedThreadPool();
-        otpProcessExecutor = Executors.newFixedThreadPool((Runtime.getRuntime()).availableProcessors()-1);
+        otpProcessExecutor = Executors.newFixedThreadPool((Runtime.getRuntime()).availableProcessors());
         otpProcessFiberFactory = new PoolFiberFactory(otpProcessExecutor);
-        //receiveThread = new Thread(receiveRunnable);
-        //receiveThread.start();
     }
     
     // shutdown
@@ -93,6 +90,7 @@ public class OtpProcessManager {
         process.setChannel(processChannel);
         process.setFiber(fiber);
         process.startReceive();
+        process.setOwner(this);
         processTable.put(pid, process);
         return pid;
     }
