@@ -19,36 +19,7 @@ public class OtpProcessManager {
     
     final private ExecutorService otpProcessExecutor;
     final private PoolFiberFactory otpProcessFiberFactory;
-    
-    private volatile boolean shutdown = false;
-    final private Thread receiveThread;
-    final private Runnable receiveRunnable = new Runnable() {
-        public void run() {
-            try {
-                while(!shutdown) {
-                    try {
-                        for(OtpProcess otpProcess: processTable.values()) {
-                            while(true) {
-                                try {
-                                    OtpMsg msg = otpProcess.getMbox().receiveMsg(0); // poll
-                                    otpProcess.cast(msg);
-                                } catch (InterruptedException interruptedException) {
-                                    break; // empty poll / timeout
-                                }
-                            }
-                        }
-                    } catch (Exception innerException) {
-                        innerException.printStackTrace();
-                        // TODO: listener, notification
-                    }
-                }
-            } catch (Exception outerException) {
-                outerException.printStackTrace();
-                // TODO: listener, notification
-            }
-        }
-    };
-    
+
     public OtpProcessManager(String nodeName, String cookie) throws java.io.IOException {
         this(new OtpNode(nodeName, cookie));
     }
@@ -57,16 +28,16 @@ public class OtpProcessManager {
         this.otpNode = otpNode;
         processTable = new ConcurrentHashMap<OtpErlangPid, OtpProcess>();
         rpcCache = new ConcurrentHashMap<String, OtpRPC>();
-        otpProcessExecutor = Executors.newCachedThreadPool();
+        //otpProcessExecutor = Executors.newCachedThreadPool();
+        otpProcessExecutor = Executors.newFixedThreadPool((Runtime.getRuntime()).availableProcessors()-1);
         otpProcessFiberFactory = new PoolFiberFactory(otpProcessExecutor);
-        receiveThread = new Thread(receiveRunnable);
-        receiveThread.start();
+        //receiveThread = new Thread(receiveRunnable);
+        //receiveThread.start();
     }
     
     // shutdown
     public void shutdown() {
         synchronized(this) {
-            shutdown = true;
             for(OtpProcess process: processTable.values()) {
                 process.kill();
             }
@@ -121,6 +92,7 @@ public class OtpProcessManager {
         processChannel.subscribe(fiber, process);
         process.setChannel(processChannel);
         process.setFiber(fiber);
+        process.startReceive();
         processTable.put(pid, process);
         return pid;
     }

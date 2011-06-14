@@ -19,6 +19,32 @@ public abstract class OtpProcess implements Callback<OtpMsg> {
     
     private OtpProcessManager owner = null;
     
+    private volatile boolean shutdown = false;
+    private Thread receiveThread;
+    final private Runnable receiveRunnable = new Runnable() {
+        public void run() {
+            try {
+                while(!shutdown) {
+                    try {
+                        OtpMsg msg = mbox.receiveMsg(); // poll
+                        cast(msg);
+                    } catch (Exception innerException) {
+                        innerException.printStackTrace();
+                        // TODO: listener, notification
+                    }
+                }
+            } catch (Exception outerException) {
+                outerException.printStackTrace();
+                // TODO: listener, notification
+            }
+        }
+    };
+    
+    protected void startReceive() {
+        receiveThread = new Thread(receiveRunnable);
+        receiveThread.start();
+    }
+    
     protected void setName(String name) {
         this.name = name;
     }
@@ -63,7 +89,7 @@ public abstract class OtpProcess implements Callback<OtpMsg> {
         return fiber;
     }
     
-    private OtpProcessManager getOwner() {
+    protected OtpProcessManager getOwner() {
         return owner;
     }
     
@@ -74,6 +100,7 @@ public abstract class OtpProcess implements Callback<OtpMsg> {
     }
     
     protected void kill(String reason) {
+        shutdown = true;
         fiber.dispose();
         mbox.exit(reason);
         // TODO: channel?

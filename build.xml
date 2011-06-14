@@ -40,5 +40,11 @@
         </javac>
     </target>
     
+    <target name="package" depends="build-project">
+        <jar destfile="ji2.jar"
+            basedir="bin" />
+    </target>
+
+    
     <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
 </project>
